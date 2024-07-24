@@ -24,7 +24,6 @@ jobs:
         id: setup-ffmpeg
         with:
           ffmpeg-version: release
-          linking-type: static
           github-token: ${{ github.server_url == 'https://github.com' && github.token || '' }}
 
       - name: Install dependencies

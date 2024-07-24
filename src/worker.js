@@ -108,9 +108,6 @@ function processMarkdown(html, markdown, content, homePath) {
         $(e).replaceWith(
           `<picture><source srcset="${src.replace(
             /\.[^.]+?$/,
-            ".avif"
-          )}" type="image/avif"><source srcset="${src.replace(
-            /\.[^.]+?$/,
             ".webp"
           )}" type="image/webp">${$(e)
             .prop("src", src.replace(/\.[^.]+?$/, ".png"))

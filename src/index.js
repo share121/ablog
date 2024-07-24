@@ -72,21 +72,12 @@ async function genImg(path) {
       promise.push(cmd(`ffmpeg -y -i "${path}" "${setExtname(path, ".gif")}"`));
       break;
     default:
-      ignoreImg.push(setExtname(path, ".avif"));
-      promise.push(
-        cmd(
-          `ffmpeg -y -i "${path}" -map 0 -map 0 -filter:v:1 alphaextract "${setExtname(
-            path,
-            ".avif"
-          )}"`
-        )
-      );
       ignoreImg.push(setExtname(path, ".png"));
       promise.push(cmd(`ffmpeg -y -i "${path}" "${setExtname(path, ".png")}"`));
       break;
   }
   await Promise.allSettled(promise);
-  if (![".avif", ".png", ".webp", ".gif"].includes(extname(path)))
+  if (![".png", ".webp", ".gif"].includes(extname(path)))
     await fs.rm(path, { force: true });
 }
 
