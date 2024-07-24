@@ -16,6 +16,28 @@
   overflow: auto;
 }
 
+.mermaid {
+  background: transparent !important;
+}
+
+[data-theme="dark"] {
+  .mermaid-light {
+    opacity: 0;
+  }
+  .mermaid-dark {
+    opacity: 1;
+  }
+}
+
+[data-theme="light"] {
+  .mermaid-light {
+    opacity: 1;
+  }
+  .mermaid-dark {
+    opacity: 0;
+  }
+}
+
 [data-theme="dark"] {
   .theme-switch {
     .sun {

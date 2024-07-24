@@ -44,6 +44,7 @@
     "markdown-it-sup": "^2.0.0",
     "markdown-it-task-lists": "^2.1.1",
     "markdown-it-toc-done-right": "^4.2.0",
+    "mermaid": "^10.9.1",
     "mime": "^4.0.4",
     "postcss": "^8.4.39",
     "postcss-preset-env": "^9.6.0",

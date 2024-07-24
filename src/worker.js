@@ -35,15 +35,19 @@ function processMarkdown(html, markdown, content, homePath) {
     html: true,
     linkify: true,
     typographer: true,
-    highlight: function (str, lang) {
+    highlight: (str, lang) => {
+      if (lang === "mermaid")
+        return `<pre class="mermaid mermaid-light">${str}</pre><pre class="mermaid mermaid-dark">${str}</pre>`;
       if (lang && hljs.getLanguage(lang)) {
         try {
-          return `<pre><code class="hljs">${
+          return `<pre><code class="hljs lang-${lang}">${
             hljs.highlight(str, { language: lang, ignoreIllegals: true }).value
           }</code></pre>`;
         } catch {}
       }
-      return `<pre><code class="hljs">${md.utils.escapeHtml(str)}</code></pre>`;
+      return `<pre><code class="hljs lang-${lang}">${md.utils.escapeHtml(
+        str
+      )}</code></pre>`;
     },
   })
     .use(emoji)

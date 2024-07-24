@@ -51,6 +51,24 @@
         });
       });
     </script>
+    <script type="module">
+      import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs";
+      mermaid.initialize({
+        securityLevel: "loose",
+        theme: "default",
+        startOnLoad: false,
+      });
+      mermaid.run({ querySelector: ".mermaid-light" });
+      mermaid.initialize({
+        securityLevel: "loose",
+        theme: "dark",
+        startOnLoad: false,
+      });
+      await mermaid.run({ querySelector: ".mermaid-dark" });
+      document.querySelectorAll(".mermaid-dark").forEach((e) => {
+        e.style.marginTop = -e.clientHeight + "px";
+      });
+    </script>
   </head>
   <body>
     <header id="header-box">
