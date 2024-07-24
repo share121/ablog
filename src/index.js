@@ -64,6 +64,7 @@ exit(0);
 async function genImg(path) {
   const promise = [];
   ignoreImg.push(setExtname(path, ".webp"));
+  if (extname(path) === ".svg") return;
   promise.push(cmd(`ffmpeg -y -i "${path}" "${setExtname(path, ".webp")}"`));
   switch (extname(path)) {
     case ".apng":

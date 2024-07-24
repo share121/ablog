@@ -110,6 +110,8 @@ function processMarkdown(html, markdown, content, homePath) {
             .prop("outerHTML")}</picture>`
         );
         break;
+      case "svg":
+        break;
       default:
         $(e).replaceWith(
           `<picture><source srcset="${src.replace(
