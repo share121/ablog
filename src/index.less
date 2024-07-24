@@ -39,6 +39,22 @@ body {
     #header {
       margin: 0;
     }
+
+    .github {
+      margin-left: auto;
+      font-size: 1.2em;
+
+      a {
+        color: var(--fgColor-default);
+        text-decoration: none;
+        will-change: color;
+        transition: color ease 0.3s;
+
+        &:hover {
+          color: var(--fgColor-accent);
+        }
+      }
+    }
   }
 
   #app {
