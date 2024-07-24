@@ -19,6 +19,7 @@ import uslug from "uslug";
 import attrs from "markdown-it-attrs";
 import bracketedSpans from "markdown-it-bracketed-spans";
 import { katex } from "@mdit/plugin-katex";
+import alert from "markdown-it-github-alerts";
 
 /**
  * 处理 markdown
@@ -51,6 +52,7 @@ function processMarkdown(html, markdown, content, homePath) {
     .use(abbr)
     .use(ins)
     .use(mark)
+    .use(alert)
     .use(deflist)
     .use(taskLists, { label: true })
     .use(container, "spoiler", {

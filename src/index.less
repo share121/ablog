@@ -38,6 +38,15 @@
   }
 }
 
+.hljs {
+  background-color: transparent !important;
+  padding: 16px !important;
+}
+
+pre:has(.hljs) {
+  padding: 0;
+}
+
 body {
   display: flex;
   flex-direction: column;
@@ -47,15 +56,15 @@ body {
 
   #header-box {
     display: flex;
-    padding: 1rem 2rem;
+    padding: 16px 32px;
     align-items: center;
-    border-bottom: 0.0625rem solid var(--borderColor-muted);
-    box-shadow: 0 0 1rem 0 var(--borderColor-default);
-    gap: 1rem;
+    border-bottom: 1px solid var(--borderColor-muted);
+    box-shadow: 0 0 16px 0 var(--borderColor-default);
+    gap: 16px;
     z-index: 1;
 
     #logo {
-      height: 2.5rem;
+      height: 40px;
     }
 
     #header {
@@ -108,7 +117,7 @@ body {
 
     #main {
       flex: 1;
-      padding: 1rem;
+      padding: 16px;
       overflow: auto;
 
       h1,
@@ -119,7 +128,7 @@ body {
       h6 {
         & > a.header-anchor {
           opacity: 0;
-          margin-left: 1rem;
+          margin-left: 16px;
           will-change: opacity;
           transition: opacity 0.3s;
         }
@@ -132,14 +141,14 @@ body {
 
     #content,
     #toc {
-      padding: 1rem;
-      width: 16rem;
+      padding: 16px;
+      width: 256px;
       overflow: auto;
       will-change: width, padding;
       transition: width 0.5s, padding 0.5s;
     }
 
-    @media (max-width: 60rem) {
+    @media (max-width: 960px) {
       #content {
         padding: 0;
         width: 0;
@@ -147,7 +156,7 @@ body {
       }
     }
 
-    @media (max-width: 40rem) {
+    @media (max-width: 640px) {
       #toc {
         padding: 0;
         width: 0;
