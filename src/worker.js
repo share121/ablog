@@ -123,16 +123,12 @@ function processMarkdown(html, markdown, content, homePath) {
     } catch {}
   });
   return minify($.html(), {
-    collapseBooleanAttributes: true,
     collapseWhitespace: true,
     conservativeCollapse: true,
-    decodeEntities: true,
     minifyCSS: true,
     minifyJS: true,
     minifyURLs: true,
     removeComments: true,
-    removeEmptyAttributes: true,
-    removeOptionalTags: true,
     removeRedundantAttributes: true,
     removeScriptTypeAttributes: true,
     removeStyleLinkTypeAttributes: true,
