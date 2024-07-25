@@ -20,8 +20,8 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const distDir = join(__dirname, "../dist");
 const docDir = join(__dirname, "../doc");
 const publicDir = join(__dirname, "../public");
-const cpuCount = 8;
 
+const cpuCount = os.cpus().length;
 const pool = workerpool.pool(join(__dirname, "md2html.js"), {
   maxWorkers: cpuCount * 3,
 });
@@ -35,7 +35,10 @@ chokidar.watch(distDir).on("add", (path) => {
       genImg(path);
   }
 });
+console.time("HTML 生成");
 await Promise.all([genPublic(), genAssets(), genLess(), genCss(), genHtml()]);
+console.timeEnd("HTML 生成");
+console.time("gzip 压缩");
 const gzip = new Compress(distDir, distDir, {
   gzip: true,
   gzipLevel: 9,
@@ -59,6 +62,7 @@ const gzip = new Compress(distDir, distDir, {
   workers: cpuCount * 3,
 });
 await gzip.run();
+console.timeEnd("gzip 压缩");
 exit(0);
 
 /**
