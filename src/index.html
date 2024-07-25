@@ -16,6 +16,11 @@
       crossorigin="anonymous"
     />
     <link rel="stylesheet" href="~/index.css" />
+    <meta name="description" content="ABlog 是一个高性能的文档生成器" />
+    <meta
+      name="keywords"
+      content="ABlog,文档生成器,markdown,md,html,markdown转html,md2html,blog"
+    />
     <script>
       function debounce(func, delay) {
         let timer = null;
@@ -62,7 +67,6 @@
           .querySelector(".theme-switch")
           .addEventListener("click", (e) => {
             const theme = document.documentElement.dataset.theme;
-            console.log(theme);
             if (theme === "dark") {
               if (lightQuery.matches) localStorage.removeItem("theme");
               else localStorage.setItem("theme", "light");

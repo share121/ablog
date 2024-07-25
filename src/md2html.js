@@ -20,9 +20,32 @@ import attrs from "markdown-it-attrs";
 import bracketedSpans from "markdown-it-bracketed-spans";
 import { katex } from "@mdit/plugin-katex";
 import alert from "markdown-it-github-alerts";
+import { promises as fs } from "fs";
+import { join, dirname, relative } from "path";
 
 const regExt = /\.[^.]+?$/;
 const regBasename = /^(?:\d+\.)?(.+?)(?:\.(.+?))?$/;
+
+/**
+ *
+ * @param {string} docDir
+ * @param {string} mdPath
+ * @param {string} distDir
+ * @param {string} htmlRaw
+ * @param {string} contentStr
+ */
+async function md2html(docDir, mdPath, distDir, htmlRaw, contentStr) {
+  const raw = await fs.readFile(join(docDir, mdPath), "utf8");
+  const path = join(distDir, changPath(mdPath));
+  const html = processMarkdown(
+    htmlRaw,
+    raw,
+    contentStr,
+    relative(dirname(path), distDir) || "."
+  );
+  await fs.mkdir(dirname(path), { recursive: true });
+  await fs.writeFile(path, html, "utf8");
+}
 
 /**
  * 处理 markdown
@@ -145,9 +168,7 @@ function processMarkdown(html, markdown, content, homePath) {
   });
 }
 
-workerpool.worker({
-  md2html: processMarkdown,
-});
+workerpool.worker({ md2html });
 
 /**
  * @param {string} path

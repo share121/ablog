@@ -20,8 +20,11 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const distDir = join(__dirname, "../dist");
 const docDir = join(__dirname, "../doc");
 const publicDir = join(__dirname, "../public");
-const pool = workerpool.pool(join(__dirname, "md2html.js"));
+const cpuCount = 8;
 
+const pool = workerpool.pool(join(__dirname, "md2html.js"), {
+  maxWorkers: cpuCount * 3,
+});
 const regBasename = /^(?:\d+\.)?(.+?)(?:\.(.+?))?$/;
 await clean();
 const ignoreImg = {};
@@ -53,7 +56,7 @@ const gzip = new Compress(distDir, distDir, {
     "tif",
     "tiff",
   ],
-  workers: os.cpus.length * 2,
+  workers: cpuCount * 3,
 });
 await gzip.run();
 exit(0);
@@ -226,15 +229,11 @@ async function genContent() {
         }
       } else if (typeof val === "object") {
         const path = join(dir, mat[2] ?? name);
-        t(
-          val,
-          ul
-            .append(
-              `<li><a href="~/${path}/index.html">${name}</a><ul></ul></li>`
-            )
-            .find("ul"),
-          path
-        );
+        const li = $(`<li><a href="~/${path}/index.html">${name}</a></li>`);
+        ul.append(li);
+        const newUl = $("<ul></ul>");
+        li.append(newUl);
+        t(val, newUl, path);
       }
     }
   }
@@ -254,18 +253,7 @@ async function genHtml() {
     onlyFiles: true,
   })) {
     promises.push(
-      (async () => {
-        const raw = await fs.readFile(join(docDir, mdPath), "utf8");
-        const path = join(distDir, changPath(mdPath));
-        const html = pool.exec("md2html", [
-          htmlRaw,
-          raw,
-          contentStr,
-          relative(dirname(path), distDir) || ".",
-        ]);
-        await fs.mkdir(dirname(path), { recursive: true });
-        await fs.writeFile(path, await html, "utf8");
-      })()
+      pool.exec("md2html", [docDir, mdPath, distDir, htmlRaw, contentStr])
     );
   }
   await Promise.all(promises);
