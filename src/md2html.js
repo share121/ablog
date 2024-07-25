@@ -21,6 +21,9 @@ import bracketedSpans from "markdown-it-bracketed-spans";
 import { katex } from "@mdit/plugin-katex";
 import alert from "markdown-it-github-alerts";
 
+const regExt = /\.[^.]+?$/;
+const regBasename = /^(?:\d+\.)?(.+?)(?:\.(.+?))?$/;
+
 /**
  * 处理 markdown
  * @param {string} html
@@ -36,8 +39,10 @@ function processMarkdown(html, markdown, content, homePath) {
     linkify: true,
     typographer: true,
     highlight: (str, lang) => {
-      if (lang === "mermaid")
-        return `<pre class="mermaid mermaid-light">${str}</pre><pre class="mermaid mermaid-dark">${str}</pre>`;
+      if (lang === "mermaid") {
+        const res = md.utils.escapeHtml(str);
+        return `<pre class="mermaid mermaid-light">${res}</pre><pre class="mermaid mermaid-dark">${res}</pre>`;
+      }
       if (lang && hljs.getLanguage(lang)) {
         try {
           return `<pre><code class="hljs lang-${lang}">${
@@ -84,41 +89,35 @@ function processMarkdown(html, markdown, content, homePath) {
   $("#main>h1,h2,h3,h4,h5,h6").each((_, e) => {
     $(e).append(`<a class="header-anchor" href="#${$(e).prop("id")}">#</a>`);
   });
-  $('[href*="~"]').each((_, e) => {
-    $(e).prop("href", $(e).prop("href").replaceAll("~", homePath));
-  });
-  $('[src*="~"]').each((_, e) => {
-    $(e).prop("src", $(e).prop("src").replaceAll("~", homePath));
-  });
-  $("[href]:not([href*=':'])").each((_, e) => {
-    $(e).prop("href", changPath($(e).prop("href")));
-  });
-  $("[src]:not([src*=':'])").each((_, e) => {
-    $(e).prop("src", changPath($(e).prop("src")));
-  });
+  $("[href]").each((_, e) =>
+    $(e).prop("href", parseURL($(e).prop("href"), homePath))
+  );
+  $("[src]").each((_, e) =>
+    $(e).prop("src", parseURL($(e).prop("src"), homePath))
+  );
   $("img[src]:not([src*=':'])").each((_, e) => {
     const src = $(e).prop("src");
     switch (src.split(".").at(-1)) {
+      case "svg":
+        break;
       case "apng":
       case "gif":
         $(e).replaceWith(
           `<picture><source srcset="${src.replace(
-            /\.[^.]+?$/,
+            regExt,
             ".webp"
           )}" type="image/webp">${$(e)
-            .prop("src", src.replace(/\.[^.]+?$/, ".gif"))
+            .prop("src", src.replace(regExt, ".gif"))
             .prop("outerHTML")}</picture>`
         );
-        break;
-      case "svg":
         break;
       default:
         $(e).replaceWith(
           `<picture><source srcset="${src.replace(
-            /\.[^.]+?$/,
+            regExt,
             ".webp"
           )}" type="image/webp">${$(e)
-            .prop("src", src.replace(/\.[^.]+?$/, ".png"))
+            .prop("src", src.replace(regExt, ".png"))
             .prop("outerHTML")}</picture>`
         );
         break;
@@ -151,7 +150,6 @@ workerpool.worker({
 });
 
 /**
- *
  * @param {string} path
  */
 function changPath(path) {
@@ -161,14 +159,26 @@ function changPath(path) {
       if (i === arr.length - 1) {
         const ext = e.split(".").at(-1);
         if (ext === "md") {
-          const filename = e.replace(/\.[^.]+?$/, "");
-          const mat = filename.match(/^(?:\d+\.)?(.+?)(?:\.(.+?))?$/);
+          const filename = e.replace(regExt, "");
+          const mat = filename.match(regBasename);
           return (mat[2] ?? mat[1]) + ".html";
         }
         return e;
       }
-      const mat = e.match(/^(?:\d+\.)?(.+?)(?:\.(.+?))?$/);
+      const mat = e.match(regBasename);
       return mat[2] ?? mat[1];
     })
     .join("/");
+}
+
+/**
+ * @param {string} url
+ * @param {string} homePath
+ */
+function parseURL(url, homePath) {
+  try {
+    new URL(url);
+  } catch {
+    return changPath(url.replaceAll("~", homePath));
+  }
 }

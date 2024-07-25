@@ -13,23 +13,24 @@ import chokidar from "chokidar";
 import mime from "mime";
 import { exit } from "process";
 import workerpool from "workerpool";
-
+import os from "os";
 const { stream: glob } = fg;
-
 const __dirname = dirname(fileURLToPath(import.meta.url));
+
 const distDir = join(__dirname, "../dist");
 const docDir = join(__dirname, "../doc");
 const publicDir = join(__dirname, "../public");
-const pool = workerpool.pool(join(__dirname, "worker.js"));
+const pool = workerpool.pool(join(__dirname, "md2html.js"));
 
+const regBasename = /^(?:\d+\.)?(.+?)(?:\.(.+?))?$/;
 await clean();
-const ignoreImg = [];
+const ignoreImg = {};
 chokidar.watch(distDir).on("add", (path) => {
-  if (
-    !ignoreImg.includes(path) &&
-    mime.getType(extname(path)).split("/")[0] === "image"
-  )
-    genImg(path);
+  if (!ignoreImg[path]) {
+    const mimetype = mime.getType(extname(path));
+    if (mimetype.startsWith("image/") && mimetype !== "image/svg+xml")
+      genImg(path);
+  }
 });
 await Promise.all([genPublic(), genAssets(), genLess(), genCss(), genHtml()]);
 const gzip = new Compress(distDir, distDir, {
@@ -52,7 +53,7 @@ const gzip = new Compress(distDir, distDir, {
     "tif",
     "tiff",
   ],
-  workers: 16,
+  workers: os.cpus.length * 2,
 });
 await gzip.run();
 exit(0);
@@ -63,29 +64,28 @@ exit(0);
  */
 async function genImg(path) {
   const promise = [];
-  ignoreImg.push(setExtname(path, ".webp"));
-  if (extname(path) === ".svg") return;
-  promise.push(cmd(`ffmpeg -y -i "${path}" "${setExtname(path, ".webp")}"`));
-  switch (extname(path)) {
-    case ".apng":
-    case ".gif":
-      ignoreImg.push(setExtname(path, ".gif"));
-      promise.push(cmd(`ffmpeg -y -i "${path}" "${setExtname(path, ".gif")}"`));
-      break;
-    default:
-      ignoreImg.push(setExtname(path, ".png"));
-      promise.push(cmd(`ffmpeg -y -i "${path}" "${setExtname(path, ".png")}"`));
-      break;
+  const webp = setExtname(path, ".webp");
+  ignoreImg[webp] = true;
+  promise.push(cmd(`ffmpeg -y -i "${path}" "${webp}"`));
+  const ext = extname(path);
+  if (ext === ".apng") {
+    const gif = setExtname(path, ".gif");
+    ignoreImg[gif] = true;
+    promise.push(cmd(`ffmpeg -y -i "${path}" "${gif}"`));
+  } else if (ext !== ".png") {
+    const png = setExtname(path, ".png");
+    ignoreImg[png] = true;
+    promise.push(cmd(`ffmpeg -y -i "${path}" "${png}"`));
   }
   await Promise.allSettled(promise);
-  if (![".png", ".webp", ".gif"].includes(extname(path)))
+  if (![".png", ".webp", ".gif"].includes(ext))
     await fs.rm(path, { force: true });
 }
 
 /**
  * 改变文件后缀
  * @param {string} path
- * @param {string} extname
+ * @param {string} ext
  * @returns {string}
  */
 function setExtname(path, ext) {
@@ -113,20 +113,11 @@ async function genAssets() {
     onlyFiles: true,
     ignore: ["**/*.md"],
   })) {
+    const newPath = join(distDir, changPath(path));
     promise.push(
-      (async () => {
-        const s = dirname(path).split(sep);
-        const newPath = join(
-          distDir,
-          ...s.map((e) => {
-            const mat = e.match(/^(?:\d+\.)?(.+?)(?:\.(.+?))?$/);
-            return mat[2] ?? mat[1];
-          }),
-          basename(path)
-        );
-        await fs.mkdir(dirname(newPath), { recursive: true });
-        await fs.copyFile(join(docDir, path), newPath);
-      })()
+      fs
+        .mkdir(dirname(newPath), { recursive: true })
+        .then(() => fs.copyFile(join(docDir, path), newPath))
     );
   }
   await Promise.all(promise);
@@ -191,7 +182,7 @@ async function processCss(css) {
   return (
     await postcss([
       postcssPresetEnv({
-        browsers: [">= 0%"],
+        browsers: [">=0%"],
         stage: 0,
       }),
       cssnano({ preset: "default" }),
@@ -202,7 +193,8 @@ async function processCss(css) {
 /**
  * 处理目录
  */
-async function processContent(dir = docDir, res = {}) {
+async function processContent(dir = docDir) {
+  const res = {};
   const list = await fs.readdir(dir);
   for (const name of list) {
     const stat = await fs.stat(join(dir, name));
@@ -224,18 +216,25 @@ async function genContent() {
   let ul = $("ul");
   function t(content, ul, dir) {
     for (const [key, val] of Object.entries(content)) {
-      const mat = key.match(/^(?:\d+\.)?(.+?)(?:\.(.+?))?$/);
+      const mat = key.match(regBasename);
       if (!mat) continue;
       const name = mat[1];
-      const path = join(dir, mat[2] ?? name);
       if (val === null) {
-        if (name !== "index")
-          ul.append(`<li><a href="~/${path + ".html"}">${name}</a></li>`);
+        if (name !== "index") {
+          const path = join(dir, mat[2] ?? name);
+          ul.append(`<li><a href="~/${path}.html">${name}</a></li>`);
+        }
       } else if (typeof val === "object") {
-        ul.append(
-          `<li><a href="~/${path}/index.html">${name}</a><ul></ul></li>`
+        const path = join(dir, mat[2] ?? name);
+        t(
+          val,
+          ul
+            .append(
+              `<li><a href="~/${path}/index.html">${name}</a><ul></ul></li>`
+            )
+            .find("ul"),
+          path
         );
-        t(val, ul.find("ul"), path);
       }
     }
   }
@@ -257,32 +256,39 @@ async function genHtml() {
     promises.push(
       (async () => {
         const raw = await fs.readFile(join(docDir, mdPath), "utf8");
-        const mat = basename(mdPath, extname(mdPath)).match(
-          /^(?:\d+\.)?(.+?)(?:\.(.+?))?$/
-        );
-        if (!mat) return;
-        const name = mat[1];
-        const s = dirname(mdPath).split(sep);
-        const path = join(
-          distDir,
-          ...s.map((e) => {
-            const mat = e.match(/^(?:\d+\.)?(.+?)(?:\.(.+?))?$/);
-            return mat[2] ?? mat[1];
-          }),
-          (mat[2] ?? name) + ".html"
-        );
-        const [html] = await Promise.all([
-          pool.exec("md2html", [
-            htmlRaw,
-            raw,
-            contentStr,
-            relative(dirname(path), distDir) || ".",
-          ]),
-          fs.mkdir(dirname(path), { recursive: true }),
+        const path = join(distDir, changPath(mdPath));
+        const html = pool.exec("md2html", [
+          htmlRaw,
+          raw,
+          contentStr,
+          relative(dirname(path), distDir) || ".",
         ]);
-        await fs.writeFile(path, html, "utf8");
+        await fs.mkdir(dirname(path), { recursive: true });
+        await fs.writeFile(path, await html, "utf8");
       })()
     );
   }
   await Promise.all(promises);
+}
+
+/**
+ * @param {string} path
+ */
+function changPath(path) {
+  return path
+    .split(/[\/]/)
+    .map((e, i, arr) => {
+      if (i === arr.length - 1) {
+        const ext = e.split(".").at(-1);
+        if (ext === "md") {
+          const filename = e.replace(/\.[^.]+?$/, "");
+          const mat = filename.match(regBasename);
+          return (mat[2] ?? mat[1]) + ".html";
+        }
+        return e;
+      }
+      const mat = e.match(regBasename);
+      return mat[2] ?? mat[1];
+    })
+    .join("/");
 }
