@@ -1,6 +1,11 @@
 @font-face {
   font-family: "Rousseau-Deco-2";
-  src: url("./Rousseau-Deco-2.ttf");
+  src: url("Rousseau-Deco-2.ttf");
+}
+
+@font-face {
+  font-family: "FiraCode-VF";
+  src: url("FiraCode-VF.ttf");
 }
 
 * {
@@ -9,6 +14,10 @@
   scroll-margin-top: 10vh;
   transition: background-color ease-in-out 0.3s, border-color ease-in-out 0.3s,
     box-shadow ease-in-out 0.3s;
+}
+
+code {
+  font-family: "FiraCode-VF" !important;
 }
 
 .markdown-body {
@@ -25,23 +34,28 @@
 
 .mermaid {
   background: transparent !important;
+
+  & > svg {
+    display: block;
+    margin: auto;
+  }
 }
 
 [data-theme="dark"] {
-  .mermaid-light {
-    opacity: 0;
+  .mermaid-light.init {
+    display: none;
   }
-  .mermaid-dark {
-    opacity: 1;
+  .mermaid-dark.init {
+    display: block;
   }
 }
 
 [data-theme="light"] {
-  .mermaid-light {
-    opacity: 1;
+  .mermaid-light.init {
+    display: block;
   }
-  .mermaid-dark {
-    opacity: 0;
+  .mermaid-dark.init {
+    display: none;
   }
 }
 

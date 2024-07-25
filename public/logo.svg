@@ -1,0 +1,11 @@
+<svg width="200" height="200" xmlns="http://www.w3.org/2000/svg">
+  <style>
+    @font-face {
+    font-family: "Rousseau-Deco-2";
+    src: url("Rousseau-Deco-2.ttf");
+    }
+  </style>
+  <text x="100" y="100" font-family="Rousseau-Deco-2" font-size="60" fill="currentColor"
+    text-anchor="middle"
+    dominant-baseline="middle">ABlog</text>
+</svg>

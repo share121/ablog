@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>ABlog</title>
-    <link rel="icon" href="~/logo.png" type="image/x-icon" />
+    <link rel="icon" href="~/logo.svg" type="image/x-icon" />
     <link rel="stylesheet" href="~/normalize.css" />
     <link rel="stylesheet" href="~/github-markdown.css" />
     <link rel="stylesheet" href="~/github-alert.css" />
@@ -91,15 +91,15 @@
         theme: "default",
         startOnLoad: false,
       });
-      mermaid.run({ querySelector: ".mermaid-light" });
+      await mermaid.run({ querySelector: ".mermaid-light" });
       mermaid.initialize({
         securityLevel: "loose",
         theme: "dark",
         startOnLoad: false,
       });
       await mermaid.run({ querySelector: ".mermaid-dark" });
-      document.querySelectorAll(".mermaid-dark").forEach((e) => {
-        e.style.marginTop = -e.clientHeight + "px";
+      document.querySelectorAll(".mermaid").forEach((e) => {
+        e.classList.add("init");
       });
     </script>
   </head>
