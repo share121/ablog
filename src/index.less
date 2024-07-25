@@ -181,6 +181,14 @@ body {
       }
     }
 
+    #content {
+      border-right: 1px solid var(--borderColor-default);
+    }
+
+    #toc {
+      border-left: 1px solid var(--borderColor-default);
+    }
+
     #content,
     #toc {
       padding: 16px;
@@ -193,6 +201,7 @@ body {
     @media (max-width: 960px) {
       #content {
         padding: 0;
+        border-width: 0;
         width: 0;
         overflow: hidden;
       }
@@ -201,6 +210,7 @@ body {
     @media (max-width: 640px) {
       #toc {
         padding: 0;
+        border-width: 0;
         width: 0;
         overflow: hidden;
       }
