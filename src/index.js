@@ -23,7 +23,7 @@ const publicDir = join(__dirname, "../public");
 
 const cpuCount = os.cpus().length;
 const pool = workerpool.pool(join(__dirname, "md2html.js"), {
-  maxWorkers: cpuCount * 3,
+  maxWorkers: cpuCount,
 });
 const regBasename = /^(?:\d+\.)?(.+?)(?:\.(.+?))?$/;
 await clean();
@@ -59,7 +59,7 @@ const gzip = new Compress(distDir, distDir, {
     "tif",
     "tiff",
   ],
-  workers: cpuCount * 3,
+  workers: cpuCount,
 });
 await gzip.run();
 console.timeEnd("gzip 压缩");
