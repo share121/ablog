@@ -31,7 +31,11 @@ const ignoreImg = {};
 chokidar.watch(distDir).on("add", (path) => {
   if (!ignoreImg[path]) {
     const mimetype = mime.getType(extname(path));
-    if (mimetype.startsWith("image/") && mimetype !== "image/svg+xml")
+    if (
+      mimetype &&
+      mimetype.startsWith("image/") &&
+      mimetype !== "image/svg+xml"
+    )
       genImg(path);
   }
 });
@@ -268,17 +272,18 @@ async function genHtml() {
  */
 function changPath(path) {
   return path
-    .split(/[\/]/)
+    .split(/[\\/]/)
     .map((e, i, arr) => {
       if (i === arr.length - 1) {
         const ext = e.split(".").at(-1);
         if (ext === "md") {
-          const filename = e.replace(/\.[^.]+?$/, "");
+          const filename = e.replace(regExt, "");
           const mat = filename.match(regBasename);
           return (mat[2] ?? mat[1]) + ".html";
         }
         return e;
       }
+      if (!e.replaceAll(".", "")) return e;
       const mat = e.match(regBasename);
       return mat[2] ?? mat[1];
     })

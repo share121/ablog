@@ -21,7 +21,7 @@ import bracketedSpans from "markdown-it-bracketed-spans";
 import { katex } from "@mdit/plugin-katex";
 import alert from "markdown-it-github-alerts";
 import { promises as fs } from "fs";
-import { join, dirname, relative } from "path";
+import { join, dirname, relative, normalize } from "path";
 
 const regExt = /\.[^.]+?$/;
 const regBasename = /^(?:\d+\.)?(.+?)(?:\.(.+?))?$/;
@@ -175,7 +175,7 @@ workerpool.worker({ md2html });
  */
 function changPath(path) {
   return path
-    .split(/[\/]/)
+    .split(/[\\/]/)
     .map((e, i, arr) => {
       if (i === arr.length - 1) {
         const ext = e.split(".").at(-1);
@@ -186,6 +186,7 @@ function changPath(path) {
         }
         return e;
       }
+      if (!e.replaceAll(".", "")) return e;
       const mat = e.match(regBasename);
       return mat[2] ?? mat[1];
     })
@@ -200,6 +201,7 @@ function parseURL(url, homePath) {
   try {
     new URL(url);
   } catch {
-    return changPath(url.replaceAll("~", homePath));
+    if (!url.startsWith("#"))
+      return normalize(changPath(url.replaceAll("~", homePath)));
   }
 }
