@@ -134,11 +134,14 @@
           .querySelector(decodeURIComponent(location.hash))
           .scrollIntoView();
       } else {
-        const scrollTop = localStorage.getItem(
-          `scroll-top-${location.pathname}`
+        document.querySelector("#main").scrollTop = +(
+          localStorage.getItem(`scroll-top-${location.pathname}`) ?? 0
         );
-        if (scrollTop) document.querySelector("#main").scrollTop = +scrollTop;
       }
+      document.querySelector("#main").style.scrollBehavior = "smooth";
+      document.querySelector("#content").scrollTop = +(
+        localStorage.getItem("content-scroll-top") ?? 0
+      );
       document.querySelectorAll(".theme-switch").forEach((e) =>
         e.addEventListener("click", (e) => {
           const theme = document.documentElement.dataset.theme;
@@ -164,7 +167,13 @@
             `scroll-top-${location.pathname}`,
             e.target.scrollTop
           );
-        }, 500)
+        }, 100)
+      );
+      document.querySelector("#content").addEventListener(
+        "scroll",
+        debounce((e) => {
+          localStorage.setItem(`content-scroll-top`, e.target.scrollTop);
+        }, 100)
       );
       document.querySelector(".menu-btn").addEventListener("click", () => {
         document.querySelector("#content").classList.toggle("open");
