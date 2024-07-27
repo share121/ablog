@@ -107,7 +107,7 @@ function processMarkdown(html, markdown, content, homePath) {
       slugify: uslug,
       callback: (html) => $("#toc").html(html),
     });
-  $("#main").html(md.render(markdown));
+  $("#main").prepend(md.render(markdown));
   $("#content").html(content);
   $("#main>h1,h2,h3,h4,h5,h6").each((_, e) => {
     $(e).append(`<a class="header-anchor" href="#${$(e).prop("id")}">#</a>`);
