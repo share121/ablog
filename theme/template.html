@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>ABlog</title>
+    <title>{{title}}</title>
     <link rel="icon" href="~/logo.svg" type="image/x-icon" />
     <link rel="stylesheet" href="~/normalize.css" />
     <link rel="stylesheet" href="~/github-markdown.css" />
@@ -83,44 +83,23 @@
       <main id="main" class="markdown-body">
         {{markdown}}
         <hr />
-        <div class="light-comments">
-          <script
-            src="https://giscus.app/client.js"
-            data-repo="share121/ablog"
-            data-repo-id="R_kgDOMaY3rQ"
-            data-category="Announcements"
-            data-category-id="DIC_kwDOMaY3rc4ChNfY"
-            data-mapping="pathname"
-            data-strict="0"
-            data-reactions-enabled="1"
-            data-emit-metadata="0"
-            data-input-position="top"
-            data-theme="light"
-            data-lang="zh-CN"
-            data-loading="lazy"
-            crossorigin="anonymous"
-            async
-          ></script>
-        </div>
-        <div class="dark-comments">
-          <script
-            src="https://giscus.app/client.js"
-            data-repo="share121/ablog"
-            data-repo-id="R_kgDOMaY3rQ"
-            data-category="Announcements"
-            data-category-id="DIC_kwDOMaY3rc4ChNfY"
-            data-mapping="pathname"
-            data-strict="0"
-            data-reactions-enabled="1"
-            data-emit-metadata="0"
-            data-input-position="top"
-            data-theme="dark"
-            data-lang="zh-CN"
-            data-loading="lazy"
-            crossorigin="anonymous"
-            async
-          ></script>
-        </div>
+        <script
+          src="https://giscus.app/client.js"
+          data-repo="share121/ablog"
+          data-repo-id="R_kgDOMaY3rQ"
+          data-category="Announcements"
+          data-category-id="DIC_kwDOMaY3rc4ChNfY"
+          data-mapping="pathname"
+          data-strict="0"
+          data-reactions-enabled="1"
+          data-emit-metadata="0"
+          data-input-position="top"
+          data-theme="light"
+          data-lang="zh-CN"
+          data-loading="lazy"
+          crossorigin="anonymous"
+          async
+        ></script>
       </main>
       <aside id="toc">{{toc}}</aside>
     </div>
@@ -143,12 +122,6 @@
           ];
         }
       });
-      window
-        .matchMedia("(max-width: 960px)")
-        .addEventListener("change", (e) => {
-          document.querySelector("#content").classList.remove("open");
-        });
-
       if (!localStorage.getItem("theme")) {
         document.documentElement.dataset.theme = ["dark", "light"][
           +lightQuery.matches
@@ -156,11 +129,30 @@
       } else if (localStorage.getItem("theme") === "dark") {
         document.documentElement.dataset.theme = "dark";
       }
+      document.querySelectorAll(".theme-switch").forEach((e) =>
+        e.addEventListener("click", (e) => {
+          const theme = document.documentElement.dataset.theme;
+          if (theme === "dark") {
+            if (lightQuery.matches) localStorage.removeItem("theme");
+            else localStorage.setItem("theme", "light");
+            document.documentElement.dataset.theme = "light";
+          } else {
+            if (!lightQuery.matches) localStorage.removeItem("theme");
+            else localStorage.setItem("theme", "dark");
+            document.documentElement.dataset.theme = "dark";
+          }
+        })
+      );
 
-      /** 不包含最大值，包含最小值
-       * @param {number} min
-       * @param {number} max
-       */
+      window
+        .matchMedia("(max-width: 960px)")
+        .addEventListener("change", (e) => {
+          document.querySelector("#content").classList.remove("open");
+        });
+      document.querySelector(".menu-btn").addEventListener("click", () => {
+        document.querySelector("#content").classList.toggle("open");
+      });
+
       function getRandomInt(min, max) {
         const minCeiled = Math.ceil(min);
         const maxFloored = Math.floor(max);
@@ -183,24 +175,6 @@
       document.querySelector("#content").scrollTop = +(
         localStorage.getItem("content-scroll-top") ?? 0
       );
-      document.querySelectorAll(".theme-switch").forEach((e) =>
-        e.addEventListener("click", (e) => {
-          const theme = document.documentElement.dataset.theme;
-          if (theme === "dark") {
-            if (lightQuery.matches) localStorage.removeItem("theme");
-            else localStorage.setItem("theme", "light");
-            document.documentElement.dataset.theme = "light";
-          } else {
-            if (!lightQuery.matches) localStorage.removeItem("theme");
-            else localStorage.setItem("theme", "dark");
-            document.documentElement.dataset.theme = "dark";
-          }
-        })
-      );
-      document.querySelector(".random-btn").addEventListener("click", (e) => {
-        const a = document.querySelectorAll("#content a");
-        a[getRandomInt(0, a.length)].click();
-      });
       document.querySelector("#main").addEventListener(
         "scroll",
         debounce((e) => {
@@ -216,9 +190,17 @@
           localStorage.setItem(`content-scroll-top`, e.target.scrollTop);
         }, 100)
       );
-      document.querySelector(".menu-btn").addEventListener("click", () => {
-        document.querySelector("#content").classList.toggle("open");
+
+      document.querySelector(".random-btn").addEventListener("click", (e) => {
+        const a = document.querySelectorAll("#content a");
+        a[getRandomInt(0, a.length)].click();
       });
+
+      function setGiscusTheme(theme) {
+        document.querySelector(".giscus-frame").contentWindow.postMessage({
+          giscus: { setConfig: { theme } },
+        });
+      }
     </script>
     <script type="module">
       import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs";

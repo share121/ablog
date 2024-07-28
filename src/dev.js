@@ -5,7 +5,7 @@ import { genFile, build, themeDir, docsDir, publicDir } from "./index.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 let p = Promise.resolve();
-chokidar.watch([themeDir, publicDir, docsDir], { ignoreInitial: true }).on(
+chokidar.watch([publicDir, docsDir], { ignoreInitial: true }).on(
   "all",
   debounce(async (e) => {
     if (["unlink", "unlinkDir", "add", "addDir"].includes(e)) {
@@ -21,6 +21,14 @@ chokidar.watch(__dirname, { ignoreInitial: true }).on(
     console.time("src 更新，全量更新");
     await p.finally(build);
     console.timeEnd("src 更新，全量更新");
+  }, 300)
+);
+chokidar.watch(themeDir, { ignoreInitial: true }).on(
+  "all",
+  debounce(async () => {
+    console.time("theme 更新，全量更新");
+    await p.finally(build);
+    console.timeEnd("theme 更新，全量更新");
   }, 300)
 );
 chokidar.watch("public", { ignoreInitial: true }).on(

@@ -20,7 +20,7 @@ import bracketedSpans from "markdown-it-bracketed-spans";
 import { katex } from "@mdit/plugin-katex";
 import alert from "markdown-it-github-alerts";
 import { promises as fs } from "fs";
-import { dirname, relative, normalize } from "path";
+import { dirname, relative, normalize, basename } from "path";
 import * as cheerio from "cheerio";
 
 const regExt = /\.[^.]+?$/;
@@ -38,7 +38,8 @@ async function md2html(from, to, template, distDir) {
   const html = await processMarkdown(
     template,
     raw,
-    relative(dirname(to), distDir) || "."
+    relative(dirname(to), distDir) || ".",
+    regBasename.exec(basename(from, ".md"))[1]
   );
   await fs.writeFile(to, html, "utf8");
 }
@@ -48,9 +49,10 @@ async function md2html(from, to, template, distDir) {
  * @param {string} template
  * @param {string} markdown
  * @param {string} homePath
+ * @param {string} filename
  * @returns {Promise<string>}
  */
-async function processMarkdown(template, markdown, homePath) {
+async function processMarkdown(template, markdown, homePath, filename) {
   const md = markdownit({
     html: true,
     linkify: true,
@@ -110,9 +112,15 @@ async function processMarkdown(template, markdown, homePath) {
       },
     });
   });
+  const $md = cheerio.load(md.render(markdown));
+  template = template.replaceAll(
+    "{{title}}",
+    $md("h1,h2,h3,h4,h5,h6").eq(0).text().replace(/ #$/, "") || filename
+  );
   template = template.replaceAll("{{markdown}}", md.render(markdown));
   template = template.replaceAll("{{toc}}", await tocPromise);
   const $ = cheerio.load(template);
+  $("title").text();
   $("[href]").each((_, e) =>
     $(e).prop("href", parseURL($(e).prop("href"), homePath))
   );
