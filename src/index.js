@@ -8,15 +8,14 @@ import cssnano from "cssnano";
 import { Compress } from "gzipper";
 import { exec } from "child_process";
 import mime from "mime";
-import { exit } from "process";
 import workerpool from "workerpool";
 import os from "os";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-const distDir = join(__dirname, "../dist");
-const docsDir = join(__dirname, "../docs");
-const publicDir = join(__dirname, "../public");
-const themeDir = join(__dirname, "../theme");
+export const distDir = join(__dirname, "../dist");
+export const docsDir = join(__dirname, "../docs");
+export const publicDir = join(__dirname, "../public");
+export const themeDir = join(__dirname, "../theme");
 
 const cpuCount = os.cpus().length;
 const pool = workerpool.pool(join(__dirname, "md2html.js"), {
@@ -24,19 +23,23 @@ const pool = workerpool.pool(join(__dirname, "md2html.js"), {
 });
 const regBasename = /^(?:\d+\.)?(.+?)(?:\.(.+?))?$/;
 
-await clean();
 console.time("HTML 生成");
-let [template, content] = await Promise.all([
-  fs.readFile(join(themeDir, "template.html"), "utf8"),
-  genContent(),
-]);
-template = template.replaceAll("{{content}}", content);
-await genDir(docsDir, publicDir, themeDir);
+let template, content;
+await build();
 console.timeEnd("HTML 生成");
 console.time("gzip 压缩");
 await compression();
 console.timeEnd("gzip 压缩");
-exit(0);
+
+export async function build() {
+  await clean();
+  [template, content] = await Promise.all([
+    fs.readFile(join(themeDir, "template.html"), "utf8"),
+    genContent(),
+  ]);
+  template = template.replaceAll("{{content}}", content);
+  await genDir(docsDir, publicDir, themeDir);
+}
 
 async function compression() {
   const gzip = new Compress(distDir, distDir, {
@@ -111,72 +114,85 @@ async function compression() {
  */
 function genDir(...paths) {
   return Promise.all(
-    paths.map(async (path) => {
-      const files = await fs.readdir(path, {
+    paths.map(async (rootPath) => {
+      const files = await fs.readdir(rootPath, {
         recursive: true,
         withFileTypes: true,
       });
-      const promises = [];
-      for (const item of files) {
-        const relativePath = join(relative(path, item.parentPath), item.name);
-        if (item.isDirectory()) {
-          const resPath = relativePath
-            .split(sep)
-            .map((e) => {
-              if (/^\.*$/.test(e)) return e;
-              const mat = e.match(regBasename);
-              return mat[2] ?? mat[1];
-            })
-            .join(sep);
-          await fs.mkdir(join(distDir, resPath), { recursive: true });
-        } else {
-          const fullPath = join(item.parentPath, item.name);
-          const ext = extname(item.name);
-          const name = basename(item.name, ext);
-          const resPath = join(
-            distDir,
-            relativePath
-              .split(sep)
-              .map((e, i, arr) => {
-                if (i !== arr.length - 1) {
-                  if (/^\.*$/.test(e)) return e;
-                  const mat = e.match(regBasename);
-                  return mat[2] ?? mat[1];
-                } else {
-                  if (ext === ".md") {
-                    const mat = name.match(regBasename);
-                    return (mat[2] ?? mat[1]) + ".html";
-                  } else if (ext === ".less") {
-                    return name + ".css";
-                  }
-                  return e;
-                }
-              })
-              .join(sep)
-          );
-          promises.push(
-            (async () => {
-              if (ext === ".md") {
-                await genHtml(fullPath, resPath, template);
-              } else if (ext === ".css") {
-                await genCss(fullPath, resPath);
-              } else if (ext === ".less") {
-                await genLess(fullPath, resPath);
-              } else if (
-                ext !== ".svg" &&
-                mime.getType(ext)?.startsWith("image/")
-              ) {
-                await genImg(fullPath, resPath);
-              } else {
-                await fs.copyFile(fullPath, resPath);
-              }
-            })()
-          );
-        }
-      }
-      await Promise.all(promises);
+      await Promise.all(
+        files.map(async (item) => {
+          const { parentPath, name: filename } = item;
+          if (filename === "template.html") return;
+          const isDir = item.isDirectory();
+          await genFile(rootPath, parentPath, filename, isDir);
+        })
+      );
     })
   );
+}
+
+/**
+ *
+ * @param {string} rootPath
+ * @param {string} parentPath
+ * @param {string} filename
+ * @param {boolean} isDir
+ */
+export async function genFile(rootPath, parentPath, filename, isDir) {
+  const promises = [];
+  const relativePath = join(relative(rootPath, parentPath), filename);
+  if (isDir) {
+    const resPath = relativePath
+      .split(sep)
+      .map((e) => {
+        if (/^\.*$/.test(e)) return e;
+        const mat = e.match(regBasename);
+        return mat[2] ?? mat[1];
+      })
+      .join(sep);
+    await fs.mkdir(join(distDir, resPath), { recursive: true });
+  } else {
+    const fullPath = join(parentPath, filename);
+    const ext = extname(filename);
+    const name = basename(filename, ext);
+    const resPath = join(
+      distDir,
+      relativePath
+        .split(sep)
+        .map((e, i, arr) => {
+          if (i !== arr.length - 1) {
+            if (/^\.*$/.test(e)) return e;
+            const mat = e.match(regBasename);
+            return mat[2] ?? mat[1];
+          } else {
+            if (ext === ".md") {
+              const mat = name.match(regBasename);
+              return (mat[2] ?? mat[1]) + ".html";
+            } else if (ext === ".less") {
+              return name + ".css";
+            }
+            return e;
+          }
+        })
+        .join(sep)
+    );
+    promises.push(
+      (async () => {
+        if (ext === ".md") {
+          await genHtml(fullPath, resPath, template);
+        } else if (ext === ".css") {
+          await genCss(fullPath, resPath);
+        } else if (ext === ".less") {
+          await genLess(fullPath, resPath);
+        } else if (ext !== ".svg" && mime.getType(ext)?.startsWith("image/")) {
+          await genImg(fullPath, resPath);
+        } else {
+          await fs.copyFile(fullPath, resPath);
+        }
+      })()
+    );
+  }
+  await Promise.all(promises);
 }
 
 async function clean() {

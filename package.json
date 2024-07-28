@@ -5,7 +5,7 @@
   "main": "src/index.ts",
   "type": "module",
   "scripts": {
-    "dev": "nodemon -e md,css,js,html,less -w doc -w src src/index.js",
+    "dev": "node --inspect src/dev.js",
     "build": "node src/index.js"
   },
   "keywords": [],
@@ -17,12 +17,11 @@
     "@types/markdown-it": "^14.1.1",
     "@types/node": "^20.14.11",
     "eslint": "^9.8.0",
-    "globals": "^15.8.0",
-    "nodemon": "^3.1.4"
+    "globals": "^15.8.0"
   },
   "dependencies": {
     "@mdit/plugin-katex": "^0.12.0",
-    "cheerio": "1.0.0-rc.12",
+    "cheerio": "^1.0.0-rc.12",
     "chokidar": "^3.6.0",
     "cssnano": "^7.0.4",
     "gzipper": "^8.1.0",
