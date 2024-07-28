@@ -1,186 +1,190 @@
-import * as cheerio from "cheerio";
 import less from "less";
 import { promises as fs } from "fs";
-import { join, dirname, basename, extname, sep, relative } from "path";
-import fg from "fast-glob";
+import { join, dirname, basename, extname, relative, sep } from "path";
 import postcss from "postcss";
 import postcssPresetEnv from "postcss-preset-env";
 import { fileURLToPath } from "url";
 import cssnano from "cssnano";
 import { Compress } from "gzipper";
 import { exec } from "child_process";
-import chokidar from "chokidar";
 import mime from "mime";
 import { exit } from "process";
 import workerpool from "workerpool";
 import os from "os";
-const { stream: glob } = fg;
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 const distDir = join(__dirname, "../dist");
-const docDir = join(__dirname, "../doc");
+const docsDir = join(__dirname, "../docs");
 const publicDir = join(__dirname, "../public");
+const themeDir = join(__dirname, "../theme");
 
 const cpuCount = os.cpus().length;
 const pool = workerpool.pool(join(__dirname, "md2html.js"), {
   maxWorkers: cpuCount,
 });
 const regBasename = /^(?:\d+\.)?(.+?)(?:\.(.+?))?$/;
+
 await clean();
-const ignoreImg = {};
-chokidar.watch(distDir).on("add", (path) => {
-  if (!ignoreImg[path]) {
-    const mimetype = mime.getType(extname(path));
-    if (
-      mimetype &&
-      mimetype.startsWith("image/") &&
-      mimetype !== "image/svg+xml"
-    )
-      genImg(path);
-  }
-});
 console.time("HTML 生成");
-await Promise.all([genPublic(), genAssets(), genLess(), genCss(), genHtml()]);
+let [template, content] = await Promise.all([
+  fs.readFile(join(themeDir, "template.html"), "utf8"),
+  genContent(),
+]);
+template = template.replaceAll("{{content}}", content);
+await genDir(docsDir, publicDir, themeDir);
 console.timeEnd("HTML 生成");
 console.time("gzip 压缩");
-const gzip = new Compress(distDir, distDir, {
-  gzip: true,
-  gzipLevel: 9,
-  exclude: [
-    "apng",
-    "avif",
-    "gif",
-    "jpg",
-    "jpeg",
-    "jfif",
-    "pjpeg",
-    "pjp",
-    "png",
-    "webp",
-    "bmp",
-    "ico",
-    "cur",
-    "tif",
-    "tiff",
-  ],
-  workers: cpuCount,
-});
-await gzip.run();
+await compression();
 console.timeEnd("gzip 压缩");
 exit(0);
 
-/**
- * 生成图像文件
- * @param {string} path
- */
-async function genImg(path) {
-  const promise = [];
-  const webp = setExtname(path, ".webp");
-  ignoreImg[webp] = true;
-  promise.push(cmd(`ffmpeg -y -i "${path}" "${webp}"`));
-  const ext = extname(path);
-  if (ext === ".apng") {
-    const gif = setExtname(path, ".gif");
-    ignoreImg[gif] = true;
-    promise.push(cmd(`ffmpeg -y -i "${path}" "${gif}"`));
-  } else if (ext !== ".png") {
-    const png = setExtname(path, ".png");
-    ignoreImg[png] = true;
-    promise.push(cmd(`ffmpeg -y -i "${path}" "${png}"`));
-  }
-  await Promise.allSettled(promise);
-  if (![".png", ".webp", ".gif"].includes(ext))
-    await fs.rm(path, { force: true });
-}
-
-/**
- * 改变文件后缀
- * @param {string} path
- * @param {string} ext
- * @returns {string}
- */
-function setExtname(path, ext) {
-  return join(dirname(path), basename(path, extname(path)) + ext);
-}
-
-/**
- * 执行命令
- * @param {string} cmd
- * @returns {Promise<{ stdout: string, stderr: string }, { err: ExecException, stdout: string, stderr: string }>}
- */
-function cmd(cmd) {
-  return new Promise((resolve, reject) => {
-    exec(cmd, (err, stdout, stderr) => {
-      if (err) reject({ err, stdout, stderr });
-      else resolve({ stdout, stderr });
-    });
+async function compression() {
+  const gzip = new Compress(distDir, distDir, {
+    gzip: true,
+    gzipLevel: 9,
+    include: [
+      "appcache",
+      "manifest",
+      "ics",
+      "ifb",
+      "coffee",
+      "litcoffee",
+      "css",
+      "csv",
+      "html",
+      "htm",
+      "shtml",
+      "jade",
+      "js",
+      "mjs",
+      "jsx",
+      "less",
+      "md",
+      "markdown",
+      "mml",
+      "mdx",
+      "n3",
+      "txt",
+      "text",
+      "conf",
+      "def",
+      "list",
+      "log",
+      "in",
+      "ini",
+      "rtx",
+      "rtf",
+      "sgml",
+      "sgm",
+      "shex",
+      "slim",
+      "slm",
+      "spdx",
+      "stylus",
+      "styl",
+      "tsv",
+      "t",
+      "tr",
+      "roff",
+      "man",
+      "me",
+      "ms",
+      "ttl",
+      "uri",
+      "uris",
+      "urls",
+      "vcard",
+      "vtt",
+      "wgsl",
+      "xml",
+      "yaml",
+      "yml",
+    ],
+    workers: cpuCount,
   });
+  await gzip.run();
 }
 
-async function genAssets() {
-  const promise = [];
-  for await (const path of glob("**/*", {
-    cwd: docDir,
-    onlyFiles: true,
-    ignore: ["**/*.md"],
-  })) {
-    const newPath = join(distDir, changPath(path));
-    promise.push(
-      fs
-        .mkdir(dirname(newPath), { recursive: true })
-        .then(() => fs.copyFile(join(docDir, path), newPath))
-    );
-  }
-  await Promise.all(promise);
-}
-
-async function genPublic() {
-  await fs.cp(publicDir, distDir, { recursive: true });
-}
-
-async function genCss() {
-  const promise = [];
-  for await (const path of glob("**/*.css", {
-    cwd: __dirname,
-    onlyFiles: true,
-  })) {
-    promise.push(
-      (async () => {
-        const res = fs.readFile(join(__dirname, path), "utf8").then(processCss);
-        const newPath = join(distDir, path);
-        await fs.mkdir(dirname(newPath), { recursive: true });
-        await fs.writeFile(newPath, await res, "utf8");
-      })()
-    );
-  }
-  await Promise.all(promise);
-}
-
-async function genLess() {
-  const promise = [];
-  for await (const path of glob("**/*.less", {
-    cwd: __dirname,
-    onlyFiles: true,
-  })) {
-    promise.push(
-      (async () => {
-        const newPath = setExtname(join(distDir, path), ".css");
-        const data = fs
-          .readFile(join(__dirname, path), "utf8")
-          .then(less.render)
-          .then((e) => processCss(e.css));
-        await fs.mkdir(dirname(newPath), { recursive: true });
-        await fs.writeFile(newPath, await data, "utf8");
-      })()
-    );
-  }
-  await Promise.all(promise);
+/**
+ * 处理文件夹
+ * @param {string[]} paths
+ */
+function genDir(...paths) {
+  return Promise.all(
+    paths.map(async (path) => {
+      const files = await fs.readdir(path, {
+        recursive: true,
+        withFileTypes: true,
+      });
+      const promises = [];
+      for (const item of files) {
+        const relativePath = join(relative(path, item.parentPath), item.name);
+        if (item.isDirectory()) {
+          const resPath = relativePath
+            .split(sep)
+            .map((e) => {
+              if (/^\.*$/.test(e)) return e;
+              const mat = e.match(regBasename);
+              return mat[2] ?? mat[1];
+            })
+            .join(sep);
+          await fs.mkdir(join(distDir, resPath), { recursive: true });
+        } else {
+          const fullPath = join(item.parentPath, item.name);
+          const ext = extname(item.name);
+          const name = basename(item.name, ext);
+          const resPath = join(
+            distDir,
+            relativePath
+              .split(sep)
+              .map((e, i, arr) => {
+                if (i !== arr.length - 1) {
+                  if (/^\.*$/.test(e)) return e;
+                  const mat = e.match(regBasename);
+                  return mat[2] ?? mat[1];
+                } else {
+                  if (ext === ".md") {
+                    const mat = name.match(regBasename);
+                    return (mat[2] ?? mat[1]) + ".html";
+                  } else if (ext === ".less") {
+                    return name + ".css";
+                  }
+                  return e;
+                }
+              })
+              .join(sep)
+          );
+          promises.push(
+            (async () => {
+              if (ext === ".md") {
+                await genHtml(fullPath, resPath, template);
+              } else if (ext === ".css") {
+                await genCss(fullPath, resPath);
+              } else if (ext === ".less") {
+                await genLess(fullPath, resPath);
+              } else if (
+                ext !== ".svg" &&
+                mime.getType(ext)?.startsWith("image/")
+              ) {
+                await genImg(fullPath, resPath);
+              } else {
+                await fs.copyFile(fullPath, resPath);
+              }
+            })()
+          );
+        }
+      }
+      await Promise.all(promises);
+    })
+  );
 }
 
 async function clean() {
   try {
-    await fs.rm(distDir, { recursive: true });
-  } catch {}
+    await fs.rm(distDir, { recursive: true, force: true });
+  } catch {
+    /**/
+  }
   await fs.mkdir(distDir, { recursive: true });
 }
 
@@ -202,17 +206,86 @@ async function processCss(css) {
 }
 
 /**
+ *
+ * @param {string} from
+ * @param {string} to
+ */
+async function genCss(from, to) {
+  const res = await fs.readFile(from, "utf8").then(processCss);
+  await fs.writeFile(to, res, "utf8");
+}
+
+/**
+ *
+ * @param {string} from
+ * @param {string} to
+ */
+async function genLess(from, to) {
+  const data = await fs
+    .readFile(from, "utf8")
+    .then(less.render)
+    .then((e) => processCss(e.css));
+  await fs.writeFile(to, data, "utf8");
+}
+
+/**
+ * 执行命令
+ * @param {string} cmd
+ * @returns {Promise<{ stdout: string, stderr: string }, { err: ExecException, stdout: string, stderr: string }>}
+ */
+function cmd(cmd) {
+  return new Promise((resolve, reject) => {
+    exec(cmd, (err, stdout, stderr) => {
+      if (err) reject({ err, stdout, stderr });
+      else resolve({ stdout, stderr });
+    });
+  });
+}
+
+/**
+ * 生成图像文件
+ * @param {string} from
+ * @param {string} to
+ */
+async function genImg(from, to) {
+  const dir = dirname(to);
+  const ext = extname(to);
+  const name = basename(to, ext);
+  const pathWithoutExt = join(dir, name);
+
+  const promise = [];
+  if (ext !== ".webp") {
+    promise.push(cmd(`ffmpeg -y -i "${from}" "${pathWithoutExt}.webp"`));
+  }
+  if (ext === ".apng") {
+    promise.push(cmd(`ffmpeg -y -i "${from}" "${pathWithoutExt}.gif"`));
+  } else if (ext !== ".png" && ext !== ".gif") {
+    promise.push(cmd(`ffmpeg -y -i "${from}" "${pathWithoutExt}.png"`));
+  }
+  if ([".webp", ".png", ".gif"].includes(ext))
+    promise.push(fs.copyFile(from, to));
+  await Promise.allSettled(promise);
+}
+
+/**
  * 处理目录
  */
-async function processContent(dir = docDir) {
+async function processContent(dir = docsDir) {
   const res = {};
-  const list = await fs.readdir(dir);
-  for (const name of list) {
-    const stat = await fs.stat(join(dir, name));
-    if (stat.isDirectory()) {
-      res[name] = await processContent(join(dir, name));
-    } else if (stat.isFile() && extname(name) === ".md") {
-      res[basename(name, extname(name))] = null;
+  const list = await fs.readdir(dir, { recursive: true, withFileTypes: true });
+  for (const item of list) {
+    let p = res;
+    const relativePath = join(relative(dir, item.parentPath), item.name);
+    if (item.isDirectory()) {
+      for (const i of relativePath.split(sep)) {
+        if (p[i] === undefined) p[i] = {};
+        p = p[i];
+      }
+    } else if (extname(item.name) === ".md") {
+      for (const i of relativePath.split(sep)) {
+        if (p[i] === undefined) p[basename(i, ".md")] = null;
+        else p = p[i];
+      }
     }
   }
   return res;
@@ -223,9 +296,14 @@ async function processContent(dir = docDir) {
  */
 async function genContent() {
   const content = await processContent();
-  const $ = cheerio.load("<ul></ul>", undefined, false);
-  let ul = $("ul");
-  function t(content, ul, dir) {
+  let ul = "<ul>";
+  /**
+   *
+   * @param {{}} content
+   * @param {string} ul
+   * @param {string} dir
+   */
+  function t(content, dir) {
     for (const [key, val] of Object.entries(content)) {
       const mat = key.match(regBasename);
       if (!mat) continue;
@@ -233,59 +311,27 @@ async function genContent() {
       if (val === null) {
         if (name !== "index") {
           const path = join(dir, mat[2] ?? name);
-          ul.append(`<li><a href="~/${path}.html">${name}</a></li>`);
+          ul += `<li><a href="~/${path}.html">${name}</a></li>`;
         }
-      } else if (typeof val === "object") {
+      } else {
         const path = join(dir, mat[2] ?? name);
-        const li = $(`<li><a href="~/${path}/index.html">${name}</a></li>`);
-        ul.append(li);
-        const newUl = $("<ul></ul>");
-        li.append(newUl);
-        t(val, newUl, path);
+        ul += `<li><a href="~/${path}/index.html">${name}</a><ul>`;
+        t(val, path);
+        ul += "</ul></li>";
       }
     }
   }
-
-  t(content, ul, "");
-  return $.html();
-}
-
-async function genHtml() {
-  const [contentStr, htmlRaw] = await Promise.all([
-    genContent(),
-    fs.readFile(join(__dirname, "index.html"), "utf8"),
-  ]);
-  const promises = [];
-  for await (const mdPath of glob("**/*.md", {
-    cwd: docDir,
-    onlyFiles: true,
-  })) {
-    promises.push(
-      pool.exec("md2html", [docDir, mdPath, distDir, htmlRaw, contentStr])
-    );
-  }
-  await Promise.all(promises);
+  t(content, "");
+  ul += "</ul>";
+  return ul;
 }
 
 /**
- * @param {string} path
+ *
+ * @param {string} from
+ * @param {string} to
+ * @param {string} template
  */
-function changPath(path) {
-  return path
-    .split(/[\\/]/)
-    .map((e, i, arr) => {
-      if (i === arr.length - 1) {
-        const ext = e.split(".").at(-1);
-        if (ext === "md") {
-          const filename = e.replace(regExt, "");
-          const mat = filename.match(regBasename);
-          return (mat[2] ?? mat[1]) + ".html";
-        }
-        return e;
-      }
-      if (!e.replaceAll(".", "")) return e;
-      const mat = e.match(regBasename);
-      return mat[2] ?? mat[1];
-    })
-    .join("/");
+function genHtml(from, to, template) {
+  return pool.exec("md2html", [from, to, template, distDir]);
 }

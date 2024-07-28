@@ -1,5 +1,4 @@
 import markdownit from "markdown-it";
-import * as cheerio from "cheerio";
 import { minify } from "html-minifier";
 import hljs from "highlight.js";
 import workerpool from "workerpool";
@@ -21,42 +20,37 @@ import bracketedSpans from "markdown-it-bracketed-spans";
 import { katex } from "@mdit/plugin-katex";
 import alert from "markdown-it-github-alerts";
 import { promises as fs } from "fs";
-import { join, dirname, relative, normalize } from "path";
+import { dirname, relative, normalize } from "path";
+import * as cheerio from "cheerio";
 
 const regExt = /\.[^.]+?$/;
 const regBasename = /^(?:\d+\.)?(.+?)(?:\.(.+?))?$/;
 
 /**
  *
- * @param {string} docDir
- * @param {string} mdPath
+ * @param {string} from
+ * @param {string} to
+ * @param {string} template
  * @param {string} distDir
- * @param {string} htmlRaw
- * @param {string} contentStr
  */
-async function md2html(docDir, mdPath, distDir, htmlRaw, contentStr) {
-  const raw = await fs.readFile(join(docDir, mdPath), "utf8");
-  const path = join(distDir, changPath(mdPath));
-  const html = processMarkdown(
-    htmlRaw,
+async function md2html(from, to, template, distDir) {
+  const raw = await fs.readFile(from, "utf8");
+  const html = await processMarkdown(
+    template,
     raw,
-    contentStr,
-    relative(dirname(path), distDir) || "."
+    relative(dirname(to), distDir) || "."
   );
-  await fs.mkdir(dirname(path), { recursive: true });
-  await fs.writeFile(path, html, "utf8");
+  await fs.writeFile(to, html, "utf8");
 }
 
 /**
  * 处理 markdown
- * @param {string} html
+ * @param {string} template
  * @param {string} markdown
- * @param {string} content
  * @param {string} homePath
- * @returns {string}
+ * @returns {Promise<string>}
  */
-function processMarkdown(html, markdown, content, homePath) {
-  const $ = cheerio.load(html);
+async function processMarkdown(template, markdown, homePath) {
   const md = markdownit({
     html: true,
     linkify: true,
@@ -71,7 +65,9 @@ function processMarkdown(html, markdown, content, homePath) {
           return `<pre><code class="hljs lang-${lang}">${
             hljs.highlight(str, { language: lang, ignoreIllegals: true }).value
           }</code></pre>`;
-        } catch {}
+        } catch {
+          /**/
+        }
       }
       return `<pre><code class="hljs lang-${lang}">${md.utils.escapeHtml(
         str
@@ -102,16 +98,21 @@ function processMarkdown(html, markdown, content, homePath) {
     .use(footnote)
     .use(bracketedSpans)
     .use(attrs)
-    .use(anchor, { slugify: uslug })
-    .use(toc, {
+    .use(anchor, {
+      permalink: anchor.permalink.linkInsideHeader(),
       slugify: uslug,
-      callback: (html) => $("#toc").html(html),
     });
-  $("#main").prepend(md.render(markdown));
-  $("#content").html(content);
-  $("#main>h1,h2,h3,h4,h5,h6").each((_, e) => {
-    $(e).append(`<a class="header-anchor" href="#${$(e).prop("id")}">#</a>`);
+  const tocPromise = new Promise((resolve) => {
+    md.use(toc, {
+      slugify: uslug,
+      callback: (html) => {
+        resolve(html);
+      },
+    });
   });
+  template = template.replaceAll("{{markdown}}", md.render(markdown));
+  template = template.replaceAll("{{toc}}", await tocPromise);
+  const $ = cheerio.load(template);
   $("[href]").each((_, e) =>
     $(e).prop("href", parseURL($(e).prop("href"), homePath))
   );
@@ -150,7 +151,9 @@ function processMarkdown(html, markdown, content, homePath) {
     try {
       new URL($(e).prop("href"));
       $(e).prop("target", "_blank");
-    } catch {}
+    } catch {
+      /**/
+    }
   });
   return minify($.html(), {
     collapseWhitespace: true,
