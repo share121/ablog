@@ -10,7 +10,11 @@ chokidar.watch([publicDir, docsDir], { ignoreInitial: true }).on(
   debounce(async (e) => {
     if (["unlink", "unlinkDir", "add", "addDir"].includes(e)) {
       console.time("全量更新");
-      await p.finally(build);
+      try {
+        await p.finally(build);
+      } catch (e) {
+        console.error(e);
+      }
       console.timeEnd("全量更新");
     }
   }, 300)
@@ -19,7 +23,11 @@ chokidar.watch(__dirname, { ignoreInitial: true }).on(
   "all",
   debounce(async () => {
     console.time("src 更新，全量更新");
-    await p.finally(build);
+    try {
+      await p.finally(build);
+    } catch (e) {
+      console.error(e);
+    }
     console.timeEnd("src 更新，全量更新");
   }, 300)
 );
@@ -27,7 +35,11 @@ chokidar.watch(themeDir, { ignoreInitial: true }).on(
   "all",
   debounce(async () => {
     console.time("theme 更新，全量更新");
-    await p.finally(build);
+    try {
+      await p.finally(build);
+    } catch (e) {
+      console.error(e);
+    }
     console.timeEnd("theme 更新，全量更新");
   }, 300)
 );
@@ -35,7 +47,11 @@ chokidar.watch("public", { ignoreInitial: true }).on(
   "change",
   debounce(async (path) => {
     console.time("public 更新，热重载");
-    await p.finally(genFile(publicDir, dirname(path), basename(path), false));
+    try {
+      await p.finally(genFile(publicDir, dirname(path), basename(path), false));
+    } catch (e) {
+      console.error(e);
+    }
     console.timeEnd("public 更新，热重载");
   }, 300)
 );
@@ -43,7 +59,11 @@ chokidar.watch(docsDir, { ignoreInitial: true }).on(
   "change",
   debounce(async (path) => {
     console.time("文档更新，热重载");
-    await p.finally(genFile(docsDir, dirname(path), basename(path), false));
+    try {
+      await p.finally(genFile(docsDir, dirname(path), basename(path), false));
+    } catch (e) {
+      console.error(e);
+    }
     console.timeEnd("文档更新，热重载");
   })
 );

@@ -119,6 +119,7 @@ async function processMarkdown(template, markdown, homePath, filename) {
   );
   template = template.replaceAll("{{markdown}}", md.render(markdown));
   template = template.replaceAll("{{toc}}", await tocPromise);
+  template = template.replaceAll("{{home_path}}", homePath);
   const $ = cheerio.load(template);
   $("title").text();
   $("[href]").each((_, e) =>
