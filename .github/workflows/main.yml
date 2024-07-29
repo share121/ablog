@@ -33,7 +33,7 @@ jobs:
           github-token: ${{ github.server_url == 'https://github.com' && github.token || '' }}
 
       - name: Install dependencies
-        run: pnpm i
+        run: pnpm i -P
 
       - name: Build project
         run: pnpm build
