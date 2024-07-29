@@ -18,6 +18,27 @@
   -webkit-tap-highlight-color: transparent;
 }
 
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+  cursor: pointer;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: #66666666;
+  border-radius: 8px;
+  transition: background-color ease-in-out 0.5s;
+  cursor: pointer;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: #31313166;
+}
+
 code {
   font-family: "FiraCode-VF" !important;
 }
@@ -133,6 +154,13 @@ body {
   box-shadow: 0 0 16px 0 var(--borderColor-default);
   gap: 16px;
   z-index: 1;
+  position: fixed;
+  background: var(--bgColor-default);
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 73px;
+  box-sizing: border-box;
 }
 
 a {
@@ -186,6 +214,10 @@ a {
   width: 100%;
   flex: 1;
   overflow: auto;
+
+  > * {
+    padding-top: 73px + 16px !important;
+  }
 }
 
 #main {
