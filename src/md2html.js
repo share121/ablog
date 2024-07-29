@@ -164,6 +164,7 @@ async function processMarkdown(template, markdown, homePath, filename) {
       /**/
     }
   });
+  $("img").prop("loading", "lazy");
   return minify($.html(), {
     collapseWhitespace: true,
     conservativeCollapse: true,
