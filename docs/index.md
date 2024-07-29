@@ -12,7 +12,6 @@ ABlog 支持很多的 markdown 语法，并且自定义很方便。
 - `cheerio`
 - `chokidar`
 - `cssnano`
-- `fast-glob`
 - `gzipper`
 - `highlight.js`
 - `html-minifier`
