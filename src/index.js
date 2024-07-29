@@ -10,7 +10,11 @@ import { exec } from "child_process";
 import mime from "mime";
 import workerpool from "workerpool";
 import os from "os";
-const __dirname = dirname(fileURLToPath(import.meta.url));
+import process from "process";
+import { minify } from "html-minifier";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 export const distDir = join(__dirname, "../dist");
 export const docsDir = join(__dirname, "../docs");
@@ -30,6 +34,9 @@ console.timeEnd("HTML 生成");
 console.time("gzip 压缩");
 await compression();
 console.timeEnd("gzip 压缩");
+if (process.argv[1] === __filename) {
+  process.exit(0);
+}
 
 export async function build() {
   await clean();
@@ -38,6 +45,20 @@ export async function build() {
     genContent(),
   ]);
   template = template.replaceAll("{{content}}", content);
+  template = minify(template, {
+    collapseWhitespace: true,
+    conservativeCollapse: true,
+    minifyCSS: true,
+    minifyJS: true,
+    minifyURLs: true,
+    removeComments: true,
+    removeRedundantAttributes: true,
+    removeScriptTypeAttributes: true,
+    removeStyleLinkTypeAttributes: true,
+    sortAttributes: true,
+    sortClassName: true,
+    useShortDoctype: true,
+  });
   await genDir(docsDir, publicDir, themeDir);
 }
 
