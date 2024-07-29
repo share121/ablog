@@ -14,11 +14,17 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
 
+      - uses: pnpm/action-setup@v4
+        name: Install pnpm
+        with:
+          version: 8
+          run_install: false
+
       - name: Install Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
+          cache: pnpm
 
       - uses: FedericoCarboni/setup-ffmpeg@v3
         id: setup-ffmpeg
@@ -27,10 +33,10 @@ jobs:
           github-token: ${{ github.server_url == 'https://github.com' && github.token || '' }}
 
       - name: Install dependencies
-        run: npm ci
+        run: pnpm i
 
       - name: Build project
-        run: npm run build
+        run: pnpm build
 
       - name: Upload production-ready build files
         uses: actions/upload-artifact@v4
