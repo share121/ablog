@@ -12,7 +12,7 @@
 
 * {
   overflow-wrap: break-word;
-  scroll-margin-top: 10vh;
+  scroll-margin-top: 73px + 16px;
   transition: background-color ease-in-out 0.3s, border-color ease-in-out 0.3s,
     box-shadow ease-in-out 0.3s;
   -webkit-tap-highlight-color: transparent;
@@ -246,10 +246,38 @@ a {
 
 #content {
   border-right: 1px solid var(--borderColor-default);
+
+  ul {
+    padding: 0;
+    list-style: none;
+
+    ul {
+      padding-left: 16px;
+    }
+
+    li {
+      margin: 0;
+      padding: 4px;
+    }
+  }
 }
 
 #toc {
   border-left: 1px solid var(--borderColor-default);
+
+  ol {
+    padding: 0;
+    list-style: none;
+
+    ol {
+      padding-left: 16px;
+    }
+
+    li {
+      margin: 0;
+      padding: 4px;
+    }
+  }
 }
 
 #content,

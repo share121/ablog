@@ -20,7 +20,7 @@ import bracketedSpans from "markdown-it-bracketed-spans";
 import { katex } from "@mdit/plugin-katex";
 import alert from "markdown-it-github-alerts";
 import { promises as fs } from "fs";
-import { dirname, relative, normalize, basename } from "path";
+import { dirname, relative, basename } from "path";
 import * as cheerio from "cheerio";
 
 const regExt = /\.[^.]+?$/;
@@ -112,22 +112,8 @@ async function processMarkdown(template, markdown, homePath, filename) {
       },
     });
   });
-  const $md = cheerio.load(md.render(markdown));
-  template = template.replaceAll(
-    "{{title}}",
-    $md("h1,h2,h3,h4,h5,h6").eq(0).text().replace(/ #$/, "") || filename
-  );
-  template = template.replaceAll("{{markdown}}", md.render(markdown));
-  template = template.replaceAll("{{toc}}", await tocPromise);
-  template = template.replaceAll("{{home_path}}", homePath);
-  const $ = cheerio.load(template);
-  $("title").text();
-  $("[href]").each((_, e) =>
-    $(e).prop("href", parseURL($(e).prop("href"), homePath))
-  );
-  $("[src]").each((_, e) =>
-    $(e).prop("src", parseURL($(e).prop("src"), homePath))
-  );
+  const $ = cheerio.load(md.render(markdown));
+  $("img").prop("loading", "lazy");
   $("img[src]:not([src*=':'])").each((_, e) => {
     const src = $(e).prop("src");
     switch (src.split(".").at(-1)) {
@@ -156,16 +142,14 @@ async function processMarkdown(template, markdown, homePath, filename) {
         break;
     }
   });
-  $("a[href]").each((_, e) => {
-    try {
-      new URL($(e).prop("href"));
-      $(e).prop("target", "_blank");
-    } catch {
-      /**/
-    }
-  });
-  $("img").prop("loading", "lazy");
-  return minify($.html(), {
+  template = template.replaceAll(
+    "{{title}}",
+    $("h1,h2,h3,h4,h5,h6").eq(0).text().replace(/ #$/, "") || filename
+  );
+  template = template.replaceAll("{{markdown}}", $.html());
+  template = template.replaceAll("{{toc}}", await tocPromise);
+  template = template.replaceAll("{{home_path}}", homePath);
+  return minify(template, {
     collapseWhitespace: true,
     conservativeCollapse: true,
     minifyCSS: true,
@@ -182,39 +166,3 @@ async function processMarkdown(template, markdown, homePath, filename) {
 }
 
 workerpool.worker({ md2html });
-
-/**
- * @param {string} path
- */
-function changPath(path) {
-  return path
-    .split(/[\\/]/)
-    .map((e, i, arr) => {
-      if (i === arr.length - 1) {
-        const ext = e.split(".").at(-1);
-        if (ext === "md") {
-          const filename = e.replace(regExt, "");
-          const mat = filename.match(regBasename);
-          return (mat[2] ?? mat[1]) + ".html";
-        }
-        return e;
-      }
-      if (!e.replaceAll(".", "")) return e;
-      const mat = e.match(regBasename);
-      return mat[2] ?? mat[1];
-    })
-    .join("/");
-}
-
-/**
- * @param {string} url
- * @param {string} homePath
- */
-function parseURL(url, homePath) {
-  try {
-    new URL(url);
-  } catch {
-    if (!url.startsWith("#"))
-      return normalize(changPath(url.replaceAll("~", homePath)));
-  }
-}

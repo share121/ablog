@@ -348,11 +348,11 @@ async function genContent() {
       if (val === null) {
         if (name !== "index") {
           const path = join(dir, mat[2] ?? name);
-          ul += `<li><a href="~/${path}.html">${name}</a></li>`;
+          ul += `<li><a href="{{home_path}}/${path}.html">${name}</a></li>`;
         }
       } else {
         const path = join(dir, mat[2] ?? name);
-        ul += `<li><a href="~/${path}/index.html">${name}</a><ul>`;
+        ul += `<li><a href="{{home_path}}/${path}/index.html">${name}</a><ul>`;
         t(val, path);
         ul += "</ul></li>";
       }
